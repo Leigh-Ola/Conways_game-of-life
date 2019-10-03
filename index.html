@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Conway's gane of Life</title>
+	<style type="text/css">
+	body{ margin:0px; font-size:10px; }
+	main{
+		position:absolute; min-width:100%;
+		max-width:100%; min-height:100%;
+		max-height:100%; display:flex;
+		background:#bbb; left:0; top:0;
+		flex-flow:column nowrap;
+	}
+	main div{
+		min-width:300px; height:100%;
+		min-height:300px; margin:auto;
+		max-width:300px; background:#000;
+		max-height:300px;
+		box-sizing:border-box;
+	}
+	main nav{
+		display:flex; height:40px;
+		padding:0; width:300px;
+		margin:0 auto 5px auto;
+		justify-content:space-between;
+	}
+	main nav button{
+		background:#bb7; width:145px;
+		border-radius:2px; height:100%;
+		border:1px solid #000;
+	}
+	main nav button:last-of-type{
+		background:rgba(250, 120, 120, 0.5);
+	}
+	button:active, button:hover, button{
+		outline:none;
+	}
+	main nav button:active{
+		background:transparent;
+	}
+	
+	main div span{
+		display:inline-block;
+		min-width:12px; max-height:12px;
+		max-width:12px; max-height:12px;
+		border:1px solid rgba(250, 250, 250, 0.2); color:#fff;
+		box-sizing:border-box;
+		text-align:center; content:" ";
+	}
+	</style>
+</head>
+<body>
+	<main id="game">
+		<div>
+			<span
+				v-for="(val, index) in cells"
+				v-bind:style="{ backgroundColor : ((val.alive)? 'red' : 'black' ),  borderColor : ((val.highlighted)? 'green' : 'rgba(250, 250, 350, 0.2)') }"
+				v-on:click="clicked(index)"
+			>&nbsp;</span>
+		</div>
+		<nav>
+			<button
+				v-on:click="start()"
+			>Start</button>
+			<button
+				v-on:click="stop()"
+			>Stop</button>
+		</nav>
+	</main>
+</body>
+<script type="text/javascript" src="../../PlugIns/Vue/vue.min.js"></script>
+<script type="text/javascript">
+
+var game = new Vue({
+	el : "#game",
+	data : {
+		cells : [], changed : false,
+		active : false, timer : 1000
+	},
+	mounted : function(){
+		var randomize = confirm("Activate random cells?");
+		this.reset(randomize);
+	},
+	methods : {
+	
+		reset : function(randomize){
+			this.$data.cells = [];
+			var ans = [];
+			for(var i=0; i<550; i++){
+				this.$data.cells.push({
+					alive : (([162,186,187,188,337,338,336,362].indexOf(i) > -1/*Math.random() > 0.7*/ && randomize)? true : false),
+					highlighted : (i == 262)/*false*/,
+					index : i,
+					neighbors : getNeighbors(i)
+				});
+			}
+			function getNeighbors(index){
+				var cells = [index-25,index+25], ans = [];
+				if(index % 25 != 0){
+					cells.push(index-1);
+					cells.push(index-26);
+					cells.push(index+24);
+				}
+				if((index+1) % 25 != 0){
+					cells.push(index+1);
+					cells.push(index+26);
+					cells.push(index-24);
+				}
+				for(var c in cells){
+					if(cells[c] < 0 || cells[c] > 549){ continue; }
+					ans.push(cells[c]);
+				}
+				return ans;
+			}
+		},
+	
+		clicked : function(index){
+			if(!this.$data.active){
+				this.$set(this.$data.cells[index], "alive", (this.$data.cells[index].alive)? false : true );
+			}else{
+				this.$data.timer/=2;
+			}
+		},
+		
+		livingCellCount : function(arr){
+			var count = 0;
+			for(var a in arr){
+				if(this.$data.cells[arr[a]].alive){ count++; }
+			}
+			return count;
+		},
+		
+		nextFrame : function(){
+			if(!this.$data.active){
+				return;
+			}
+			
+			var changed = false, v =this;
+			var cells = this.$data.cells;
+			
+			var s = [[], [], []];
+			cells.map(function(a){
+				var l = v.livingCellCount(a.neighbors);
+				if(l == 3){
+					s[0].push(a);
+				}else if(l == 2){
+					s[1].push(a);
+				}else{ s[2].push(a); }
+			});
+			var sortedCells = s[0].concat(s[1].concat(s[2]));//cells are sorted by : placing those with 3 living neighbors first, then those with 2 living neighbors, then everyone else.
+			var sortedCells_livingNeighborsCount = sortedCells.map(function(a){
+				return v.livingCellCount(a.neighbors);
+			});//to hold each cell's living neighbors value, before any modifications
+			
+			
+			for(var i in sortedCells){
+				var count = sortedCells_livingNeighborsCount[i];
+				var index = sortedCells[i].index;
+				if(count == 3){
+					if(!this.$data.cells[index].alive){ changed = true; }
+					this.$set(this.$data.cells[index], "alive", true);
+				}else if(count != 2){
+					if(this.$data.cells[index].alive){ changed = true; }
+					this.$set(this.$data.cells[index], "alive", false);
+				}
+			}
+			
+			if(!changed){
+				this.stop();
+			}
+			requestAnimationFrame(this.nextFrame);
+		},
+		
+		start : function(){
+			if(this.$data.active){
+				return;
+			}
+			this.$data.active = true;
+			requestAnimationFrame(this.nextFrame);
+		},
+		
+		stop : function(){
+			if(!this.$data.active){
+				this.reset(false);
+			}
+			this.$data.active = false;
+		}
+	}
+});
+
+</script>
+</html>
